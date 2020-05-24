@@ -38,399 +38,278 @@
                 min-width: 200px;
             }
         </style>
-        <script type="text/javascript" src="./bignumber.js"></script>
         <script type="text/javascript">
-            function desenhar(desenharMandelbrot, desenharJulia) {
-                function toPixel(valor, minF, maxF, totalPixels) {
-                    // (valor - minF) * totalPixels / (maxF - minF)
-                    return BigNumber(1).times(valor).minus(minF).times(totalPixels).div(maxF.minus(minF)).toNumber();
+            function limparArea(canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            function mandelbrot(x, y) {
+                const maxiter = 1024;
+                let it = -1;
+                let zr = 0, zi = 0;
+                while (it < maxiter) {
+                    let zrzr = zr * zr, zizi = zi * zi;
+                    if (zrzr + zizi > 4) break;
+                    let t = zrzr - zizi + x;
+                    zi = zr * zi * 2 + y;
+                    zr = t;
+                    it++;
                 }
+                return {"it": it, "r": zr, "i": zi};
+            }
 
-                function toValue(pixel, minF, maxF, totalPixels) {
-                    // pixel * (maxF - minF) / totalPixels + minF
-                    return BigNumber(1).times(pixel).times(maxF.minus(minF)).div(totalPixels).plus(minF).toNumber();
+            function julia(cx, cy, rr, x, y) {
+                const maxiter = 1024;
+                let zr = x, zi = y, it = 0;
+                while (it < maxiter) {
+                    let zrzr = zr * zr, zizi = zi * zi;
+                    if (zrzr + zizi >= rr) break;
+                    let t = zrzr - zizi;
+                    zi = zr * zi * 2 + cy;
+                    zr = t + cx;
+                    it++;
                 }
+                return {"it": it, "r": zr, "i": zi};
+            }
 
-                function melhorArredondamento(x) {
-                    let p = 0;
-                    while (x.gt(10)) {
-                       x = x.div(10);
-                       p++;
-                    }
-                    while (x.lt(1)) {
-                       x = x.times(10);
-                       p--;
-                    }
-                    return x.idiv(1).times(10 ** p);
+            function centralizarArea(xc, yc, cursorX, cursorY, zoom, canvas) {
+                const w = canvas.width;
+                const h = canvas.height;
+                const ctx = canvas.getContext('2d');
+                const mz = 1 / zoom;
+                const minX = xc - mz;
+                const maxX = xc + mz;
+                const minY = yc - mz;
+                const maxY = yc + mz;
+                const hpixel = (maxX- minX) / w;
+                const vpixel = (maxY - minY) / h;
+                return {
+                    "nx": minX + (hpixel * cursorX),
+                    "ny": minY + (vpixel * cursorY)
                 }
+            }
 
-                function linhas(escala, minF, maxF) {
-                    let ffa = minF.div(escala).idiv(1).times(escala);
-                    let ffb = maxF.div(escala).idiv(1).times(escala);
-                    let r = [];
-                    for (let i = ffa; i.lte(ffb); i = i.plus(escala)) {
-                        r.push(i);
-                    }
-                    return r;
-                }
+            function desenharAreaMandelbrot(xc, yc, zoom, canvas, blocagem, callback, colorir) {
+                const w = canvas.width;
+                const h = canvas.height;
+                const ctx = canvas.getContext('2d');
+                const mz = 1 / zoom;
+                const minX = xc - mz;
+                const maxX = xc + mz;
+                const minY = yc - mz;
+                const maxY = yc + mz;
+                const hpixel = (maxX - minX) / w;
+                const vpixel = (maxY - minY) / h;
 
-                function normalizar(x, escala) {
-                    return x.isZero() ? "0" : (x.isPositive() ? "+" : "") + x.toString();
-                }
+                // Limpa o canvas.
+                ctx.fillStyle = "white";
+                ctx.fillRect(0, 0, w, h);
+                ctx.imageSmoothingEnabled = false;
 
-                function clamp(min, value, max) {
-                    return Math.min(Math.max(value, min), max);
-                }
-
-                function limparArea(canvas) {
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = "#FFFFFF";
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                }
-
-                function mandelbrot(x, y) {
-                    const maxiter = 1024;
-                    let it = -1;
-                    let zr = 0, zi = 0;
-                    while (it < maxiter) {
-                        let zrzr = zr * zr, zizi = zi * zi;
-                        if (zrzr + zizi > 4) break;
-                        let t = zrzr - zizi + x;
-                        zi = zr * zi * 2 + y;
-                        zr = t;
-                        it++;
-                    }
-                    return {"it": it, "r": zr, "i": zi};
-                }
-
-                function mandelbrotAltaPrecisao(x, y) {
-                    const maxiter = 1024;
-                    let it = -1;
-                    x = BigNumber(x);
-                    y = BigNumber(y);
-                    let zr = BigNumber(0), zi = BigNumber(0), quatro = BigNumber(4), dois = BigNumber(2);
-                    while (it < maxiter) {
-                        let zrzr = zr.times(zr), zizi = zi.times(zi);
-                        if (zrzr.plus(zizi).gt(quatro)) break;
-                        let t = zrzr.minus(zizi).plus(x);
-                        zi = zr.times(zi).times(dois).plus(y);
-                        zr = t;
-                        it++;
-                    }
-                    return it;
-                }
-
-                function julia(cx, cy, rr, x, y) {
-                    const maxiter = 1024;
-                    let zr = x, zi = y, it = 0;
-                    while (it < maxiter) {
-                        let zrzr = zr * zr, zizi = zi * zi;
-                        if (zrzr + zizi >= rr) break;
-                        let t = zrzr - zizi;
-                        zi = zr * zi * 2 + cy;
-                        zr = t + cx;
-                        it++;
-                    }
-                    return {"it": it, "r": zr, "i": zi};
-                }
-
-                /*function colorir(out) {
-                    let it = out["it"], zr = out["zr"], zi = out["zi"];
-                    return it === 0 ? [0, 0, 255]
-                            : it === 1 ? [0, 0, 208]
-                            : it === 2 ? [0, 0, 160]
-                            : it === 3 ? [0, 0, 128]
-                            : it === 4 ? [0, 0, 64]
-                            : it === 5 ? [0, 0, 0]
-                            : it < 256 ? [0, it, 0]
-                            : it < 512 ? [0, 255, it - 256]
-                            : it < 768 ? [it - 512, 768 - it, 255]
-                            : it < 1024 ? [255, it - 768, 255]
-                            : [128, 128, 255];
-                }*/
-
-                function centralizarArea(xc, yc, cursorX, cursorY, zoom, canvas) {
-                    const w = canvas.width;
-                    const h = canvas.height;
-                    const ctx = canvas.getContext('2d');
-                    const mz = BigNumber(1).div(zoom);
-                    const minX = xc.minus(mz);
-                    const maxX = xc.plus(mz);
-                    const minY = yc.minus(mz);
-                    const maxY = yc.plus(mz);
-                    const hpixel = maxX.minus(minX).div(w);
-                    const vpixel = maxY.minus(minY).div(h);
-                    return {
-                        "nx": minX.plus(hpixel.times(cursorX)),
-                        "ny": minY.plus(vpixel.times(cursorY))
-                    }
-                }
-
-                function desenharAreaMandelbrot(xc, yc, zoom, canvas, blocagem, callback, colorir) {
-                    if (xc instanceof BigNumber) xc = xc.toNumber();
-                    if (yc instanceof BigNumber) yc = yc.toNumber();
-                    if (zoom instanceof BigNumber) zoom = zoom.toNumber();
-                    const w = canvas.width;
-                    const h = canvas.height;
-                    const ctx = canvas.getContext('2d');
-                    const mz = 1 / zoom;
-                    const minX = xc - mz;
-                    const maxX = xc + mz;
-                    const minY = yc - mz;
-                    const maxY = yc + mz;
-                    const hpixel = (maxX - minX) / w;
-                    const vpixel = (maxY - minY) / h;
-
-                    // Limpa o canvas.
-                    ctx.fillStyle = "white";
-                    ctx.fillRect(0, 0, w, h);
-                    ctx.imageSmoothingEnabled = false;
-
-                    // Plota o gráfico propriamente dito.
-                    for (let by = 0; by < blocagem; by++) {
-                        for (let bx = 0; bx < blocagem; bx++) {
-                            setTimeout(function() {
-                                for (let py = (w / blocagem) * by; py < (w / blocagem) * (by + 1); py++) {
-                                    for (let px = (w / blocagem) * bx; px < (w / blocagem) * (bx + 1); px++) {
-                                        let out = mandelbrot(minX + hpixel * px, minY + vpixel * py);
-                                        let cores = colorir(out["it"], out["zr"], out["zi"]);
-                                        ctx.fillStyle = "rgba(" + cores[0] + "," + cores[1] + "," + cores[2] + ",255)";
-                                        ctx.fillRect(px, py, 1, 1);
-                                    }
+                // Plota o gráfico propriamente dito.
+                for (let by = 0; by < blocagem; by++) {
+                    for (let bx = 0; bx < blocagem; bx++) {
+                        setTimeout(function() {
+                            for (let py = (w / blocagem) * by; py < (w / blocagem) * (by + 1); py++) {
+                                for (let px = (w / blocagem) * bx; px < (w / blocagem) * (bx + 1); px++) {
+                                    let out = mandelbrot(minX + hpixel * px, minY + vpixel * py);
+                                    let cores = colorir(out["it"], out["zr"], out["zi"]);
+                                    ctx.fillStyle = "rgba(" + cores[0] + "," + cores[1] + "," + cores[2] + ",255)";
+                                    ctx.fillRect(px, py, 1, 1);
                                 }
-                                callback();
-                            }, 10);
-                        }
-                    }
-                } // -0.728725 0.2227
-
-                function desenharAreaMandelbrotAltaPrecisao(xc, yc, zoom, canvas, blocagem, callback, colorir) {
-                    const w = canvas.width;
-                    const h = canvas.height;
-                    const ctx = canvas.getContext('2d');
-                    const mz = BigNumber(1).div(zoom);
-                    const minX = xc.minus(mz);
-                    const maxX = xc.plus(mz);
-                    const minY = yc.minus(mz);
-                    const maxY = yc.plus(mz);
-                    const hpixel = maxX.minus(minX).div(w);
-                    const vpixel = maxY.minus(minY).div(h);
-
-                    // Limpa o canvas.
-                    ctx.fillStyle = "white";
-                    ctx.fillRect(0, 0, w, h);
-                    ctx.imageSmoothingEnabled = false;
-
-                    // Plota o gráfico propriamente dito.
-                    for (let by = 0; by < blocagem; by++) {
-                        for (let bx = 0; bx < blocagem; bx++) {
-                            setTimeout(function() {
-                                for (let py = (w / blocagem) * by; py < (w / blocagem) * (by + 1); py++) {
-                                    for (let px = (w / blocagem) * bx; px < (w / blocagem) * (bx + 1); px++) {
-                                        let out = mandelbrotAltaPreciao(minX.plus(hpixel.times(px)).toNumber(), minY.plus(vpixel.times(py)).toNumber());
-                                        let cores = colorir(out["it"], out["zr"], out["zi"]);
-                                        ctx.fillStyle = "rgba(" + cores[0] + "," + cores[1] + "," + cores[2] + ",255)";
-                                        ctx.fillRect(px, py, 1, 1);
-                                    }
-                                }
-                                callback();
-                            }, 10);
-                        }
-                    }
-                }
-
-                function desenharAreaJulia(jx, jy, xc, yc, zoom, canvas, blocagem, callback, colorir) {
-                    if (jx instanceof BigNumber) jx = jx.toNumber();
-                    if (jy instanceof BigNumber) jy = jy.toNumber();
-                    if (xc instanceof BigNumber) xc = xc.toNumber();
-                    if (yc instanceof BigNumber) yc = yc.toNumber();
-                    if (zoom instanceof BigNumber) zoom = zoom.toNumber();
-                    const w = canvas.width;
-                    const h = canvas.height;
-                    const ctx = canvas.getContext('2d');
-                    const mz = 1 / zoom;
-                    const minX = xc - mz;
-                    const maxX = xc + mz;
-                    const minY = yc - mz;
-                    const maxY = yc + mz;
-                    const hpixel = (maxX - minX) / w;
-                    const vpixel = (maxY - minY) / h;
-
-                    const s = Math.sqrt(jx * jx + jy * jy);
-                    // r * r - r >= s
-                    const r = (Math.sqrt(1 + 4 * s) + 1) / 2;
-                    const rr = r * r;
-
-                    // Limpa o canvas.
-                    ctx.fillStyle = "#FFFFFF";
-                    ctx.fillRect(0, 0, w, h);
-                    ctx.imageSmoothingEnabled = false;
-
-                    // Plota o gráfico propriamente dito.
-                    for (let by = 0; by < blocagem; by++) {
-                        for (let bx = 0; bx < blocagem; bx++) {
-                            setTimeout(function() {
-                                for (let py = (w / blocagem) * by; py < (w / blocagem) * (by + 1); py++) {
-                                    for (let px = (w / blocagem) * bx; px < (w / blocagem) * (bx + 1); px++) {
-                                        let out = julia(jx, jy, rr, minX + hpixel * px, minY + vpixel * py);
-                                        let cores = colorir(out["it"], out["zr"], out["zi"]);
-                                        ctx.fillStyle = "rgba(" + cores[0] + "," + cores[1] + "," + cores[2] + ",255)";
-                                        ctx.fillRect(px, py, 1, 1);
-                                    }
-                                }
-                                callback();
-                            }, 10);
-                        }
-                    }
-                }
-
-                function avaliar() {
-                    const fx = document.getElementById('codigo').value;
-                    const ffx = "(" + fx + ")";
-                    try {
-                        return eval(ffx);
-                    } catch (z) {
-                        throw new Error("Erro na função JavaScript: " + z);
-                    }
-                }
-
-                function desenharIn(desenharMandelbrot, desenharJulia) {
-                    let mandelbrot = document.getElementById('plot-mandelbrot');
-                    let julia = document.getElementById('plot-julia');
-                    let erroJs = document.getElementById("erro-js");
-                    let erroEscalaMandelbrot = document.getElementById("erro-escala-mandelbrot");
-                    let erroEscalaJulia = document.getElementById("erro-escala-julia");
-                    let aguarde = document.getElementById("aguarde");
-                    let botoes = document.getElementById("botoes");
-                    let xcem = document.getElementById("xcm");
-                    let ycem = document.getElementById("ycm")
-                    let zoomem = document.getElementById("zoomm");
-                    let xcej = document.getElementById("xcj");
-                    let ycej = document.getElementById("ycj")
-                    let zoomej = document.getElementById("zoomj");
-                    erroJs.style.display = "none";
-                    erroEscalaMandelbrot.style.display = "none";
-                    erroEscalaJulia.style.display = "none";
-                    let xcm, ycm, zoomm, xcj, ycj, zoomj, colorir;
-
-                    try {
-                        colorir = avaliar();
-                        let teste = [colorir(0, 0, 0), colorir(5, -1, 0.5), colorir(8, -0.5, 1), colorir(1024, 2, -2)];
-                        for (let e in teste) {
-                            let ttt = teste[e];
-                            if (!(ttt instanceof Array)) throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays em todos os casos.");
-                            if (ttt.length !== 3) throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays de tamanho 3 em todos os casos.");
-                            for (let ee in ttt) {
-                                let eee = ttt[ee];
-                                if (typeof(eee) !== "number") throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays de tamanho 3 com elementos numéricos em todos os casos.");
-                                if (eee % 1 !== 0) throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays de tamanho 3 com elementos inteiros em todos os casos.");
-                                if (eee < 0) throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays de tamanho 3 com elementos maiores que zero em todos os casos.");
-                                if (eee > 255) throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays de tamanho 3 com elementos até 255 em todos os casos.");
                             }
+                            callback();
+                        }, 10);
+                    }
+                }
+            }
+
+            function desenharAreaJulia(jx, jy, xc, yc, zoom, canvas, blocagem, callback, colorir) {
+                const w = canvas.width;
+                const h = canvas.height;
+                const ctx = canvas.getContext('2d');
+                const mz = 1 / zoom;
+                const minX = xc - mz;
+                const maxX = xc + mz;
+                const minY = yc - mz;
+                const maxY = yc + mz;
+                const hpixel = (maxX - minX) / w;
+                const vpixel = (maxY - minY) / h;
+
+                const s = Math.sqrt(jx * jx + jy * jy);
+                // r * r - r >= s
+                const r = (Math.sqrt(1 + 4 * s) + 1) / 2;
+                const rr = r * r;
+
+                // Limpa o canvas.
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(0, 0, w, h);
+                ctx.imageSmoothingEnabled = false;
+
+                // Plota o gráfico propriamente dito.
+                for (let by = 0; by < blocagem; by++) {
+                    for (let bx = 0; bx < blocagem; bx++) {
+                        setTimeout(function() {
+                            for (let py = (w / blocagem) * by; py < (w / blocagem) * (by + 1); py++) {
+                                for (let px = (w / blocagem) * bx; px < (w / blocagem) * (bx + 1); px++) {
+                                    let out = julia(jx, jy, rr, minX + hpixel * px, minY + vpixel * py);
+                                    let cores = colorir(out["it"], out["zr"], out["zi"]);
+                                    ctx.fillStyle = "rgba(" + cores[0] + "," + cores[1] + "," + cores[2] + ",255)";
+                                    ctx.fillRect(px, py, 1, 1);
+                                }
+                            }
+                            callback();
+                        }, 10);
+                    }
+                }
+            }
+
+            function avaliar() {
+                const fx = document.getElementById('codigo').value;
+                const ffx = "(" + fx + ")";
+                try {
+                    return eval(ffx);
+                } catch (z) {
+                    throw new Error("Erro na função JavaScript: " + z);
+                }
+            }
+
+            function desenhar(desenharMandelbrot, desenharJulia) {
+                let mandelbrot = document.getElementById('plot-mandelbrot');
+                let julia = document.getElementById('plot-julia');
+                let erroJs = document.getElementById("erro-js");
+                let erroEscalaMandelbrot = document.getElementById("erro-escala-mandelbrot");
+                let erroEscalaJulia = document.getElementById("erro-escala-julia");
+                let aguarde = document.getElementById("aguarde");
+                let botoes = document.getElementById("botoes");
+                let xcem = document.getElementById("xcm");
+                let ycem = document.getElementById("ycm")
+                let zoomem = document.getElementById("zoomm");
+                let xcej = document.getElementById("xcj");
+                let ycej = document.getElementById("ycj")
+                let zoomej = document.getElementById("zoomj");
+                erroJs.style.display = "none";
+                erroEscalaMandelbrot.style.display = "none";
+                erroEscalaJulia.style.display = "none";
+                let xcm, ycm, zoomm, xcj, ycj, zoomj, colorir;
+
+                try {
+                    colorir = avaliar();
+                    let teste = [colorir(0, 0, 0), colorir(5, -1, 0.5), colorir(8, -0.5, 1), colorir(1024, 2, -2)];
+                    for (let e in teste) {
+                        let ttt = teste[e];
+                        if (!(ttt instanceof Array)) throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays em todos os casos.");
+                        if (ttt.length !== 3) throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays de tamanho 3 em todos os casos.");
+                        for (let ee in ttt) {
+                            let eee = ttt[ee];
+                            if (typeof(eee) !== "number") throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays de tamanho 3 com elementos numéricos em todos os casos.");
+                            if (eee % 1 !== 0) throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays de tamanho 3 com elementos inteiros em todos os casos.");
+                            if (eee < 0) throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays de tamanho 3 com elementos maiores que zero em todos os casos.");
+                            if (eee > 255) throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays de tamanho 3 com elementos até 255 em todos os casos.");
                         }
-                    } catch (x) {
-                        erroJs.style.display = "";
-                        document.getElementById("erro-js-in").innerHTML = x.message;
-                        return;
                     }
+                } catch (x) {
+                    erroJs.style.display = "";
+                    document.getElementById("erro-js-in").innerHTML = x.message;
+                    return;
+                }
 
-                    try {
-                        xcm = BigNumber(xcem.value);
-                        ycm = BigNumber(ycem.value);
-                        zoomm = BigNumber(zoomem.value);
-                        if (xcm.isNaN()) throw new Error("O valor do X central  não é um número válido.");
-                        if (ycm.isNaN()) throw new Error("O valor do Y central  não é um número válido.");
-                        if (zoomm.isNaN()) throw new Error("O valor do zoom  não é um número válido.");
-                        if (!zoomm.isPositive()) throw new Error("O valor do zoom  deve ser maior que zero.");
-                    } catch (x) {
-                        erroEscalaMandelbrot.style.display = "";
-                        document.getElementById("erro-escala-mandelbrot-in").innerHTML = x.message;
-                        limparArea(mandelbrot);
-                        return;
-                    }
+                try {
+                    xcm = parseFloat(xcem.value);
+                    ycm = parseFloat(ycem.value);
+                    zoomm = parseFloat(zoomem.value);
+                    if (isNaN(xcm)) throw new Error("O valor do X central  não é um número válido.");
+                    if (isNaN(ycm)) throw new Error("O valor do Y central  não é um número válido.");
+                    if (isNaN(zoomm)) throw new Error("O valor do zoom  não é um número válido.");
+                    if (zoomm <= 0) throw new Error("O valor do zoom  deve ser maior que zero.");
+                } catch (x) {
+                    erroEscalaMandelbrot.style.display = "";
+                    document.getElementById("erro-escala-mandelbrot-in").innerHTML = x.message;
+                    limparArea(mandelbrot);
+                    return;
+                }
 
-                    try {
-                        xcj = BigNumber(xcej.value);
-                        ycj = BigNumber(ycej.value);
-                        zoomj = BigNumber(zoomej.value);
-                        if (xcj.isNaN()) throw new Error("O valor do X central não é um número válido.");
-                        if (ycj.isNaN()) throw new Error("O valor do Y central não é um número válido.");
-                        if (zoomj.isNaN()) throw new Error("O valor do zoom não é um número válido.");
-                        if (!zoomj.isPositive()) throw new Error("O valor do zoom deve ser maior que zero.");
-                    } catch (x) {
-                        erroEscalaJulia.style.display = "";
-                        document.getElementById("erro-escala-julia-in").innerHTML = x.message;
-                        limparArea(julia);
-                        return;
-                    }
+                try {
+                    xcj = parseFloat(xcej.value);
+                    ycj = parseFloat(ycej.value);
+                    zoomj = parseFloat(zoomej.value);
+                    if (isNaN(xcj)) throw new Error("O valor do X central não é um número válido.");
+                    if (isNaN(ycj)) throw new Error("O valor do Y central não é um número válido.");
+                    if (isNaN(zoomj)) throw new Error("O valor do zoom não é um número válido.");
+                    if (zoomj <= 0) throw new Error("O valor do zoom deve ser maior que zero.");
+                } catch (x) {
+                    erroEscalaJulia.style.display = "";
+                    document.getElementById("erro-escala-julia-in").innerHTML = x.message;
+                    limparArea(julia);
+                    return;
+                }
 
-                    xcem.readOnly = true;
-                    ycem.readOnly = true;
-                    zoomem.readOnly = true;
-                    xcej.readOnly = true;
-                    ycej.readOnly = true;
-                    zoomej.readOnly = true;
-                    botoes.style.display = "none";
-                    aguarde.style.display = "";
-                    if (desenharMandelbrot) {
-                        document.getElementById("plotxm").value = xcm.toString();
-                        document.getElementById("plotym").value = ycm.toString();
-                        document.getElementById("plotzm").value = zoomm.toString();
-                    }
-                    if (desenharJulia) {
-                        document.getElementById("plotxj").value = xcj.toString();
-                        document.getElementById("plotyj").value = ycj.toString();
-                        document.getElementById("plotzj").value = zoomj.toString();
-                    }
+                xcem.readOnly = true;
+                ycem.readOnly = true;
+                zoomem.readOnly = true;
+                xcej.readOnly = true;
+                ycej.readOnly = true;
+                zoomej.readOnly = true;
+                botoes.style.display = "none";
+                aguarde.style.display = "";
+                if (desenharMandelbrot) {
+                    document.getElementById("plotxm").value = xcm.toString();
+                    document.getElementById("plotym").value = ycm.toString();
+                    document.getElementById("plotzm").value = zoomm.toString();
+                }
+                if (desenharJulia) {
+                    document.getElementById("plotxj").value = xcj.toString();
+                    document.getElementById("plotyj").value = ycj.toString();
+                    document.getElementById("plotzj").value = zoomj.toString();
+                }
 
-                    function pronto() {
-                        xcem.readOnly = false;
-                        ycem.readOnly = false;
-                        zoomem.readOnly = false;
-                        xcej.readOnly = false;
-                        ycej.readOnly = false;
-                        zoomej.readOnly = false;
-                        botoes.style.display = "";
-                        aguarde.style.display = "none";
-                    }
+                function pronto() {
+                    xcem.readOnly = false;
+                    ycem.readOnly = false;
+                    zoomem.readOnly = false;
+                    xcej.readOnly = false;
+                    ycej.readOnly = false;
+                    zoomej.readOnly = false;
+                    botoes.style.display = "";
+                    aguarde.style.display = "none";
+                }
+                let blocosOk = 0;
+                let blocagem = 16;
+                const totalBlocos = ((desenharMandelbrot ? 1 : 0) + (desenharJulia ? 1 : 0)) * blocagem * blocagem;
+                function recebe() {
+                    blocosOk++;
+                    if (blocosOk == totalBlocos) pronto();
+                }
+                setTimeout(function() {
                     let blocosOk = 0;
-                    let blocagem = 16;
-                    const totalBlocos = ((desenharMandelbrot ? 1 : 0) + (desenharJulia ? 1 : 0)) * blocagem * blocagem;
-                    function recebe() {
-                        blocosOk++;
-                        if (blocosOk == totalBlocos) pronto();
-                    }
-                    setTimeout(function() {
-                        let blocosOk = 0;
-                        if (desenharMandelbrot) desenharAreaMandelbrot(xcm, ycm, zoomm, mandelbrot, blocagem, recebe, colorir);
-                        if (desenharJulia) desenharAreaJulia(xcm, ycm, xcj, ycj, zoomj, julia, blocagem, recebe, colorir);
-                    }, 10);
-                }
+                    if (desenharMandelbrot) desenharAreaMandelbrot(xcm, ycm, zoomm, mandelbrot, blocagem, recebe, colorir);
+                    if (desenharJulia) desenharAreaJulia(xcm, ycm, xcj, ycj, zoomj, julia, blocagem, recebe, colorir);
+                }, 10);
+            }
 
-                function centralizarMandelbrot(e) {
-                    centralizar(e, "plot-mandelbrot", "plotxm", "plotym", "plotzm", "xcm", "ycm");
-                }
+            function centralizarMandelbrot(e) {
+                centralizar(e, "plot-mandelbrot", "plotxm", "plotym", "plotzm", "xcm", "ycm");
+            }
 
-                function centralizarJulia(e) {
-                    centralizar(e, "plot-julia", "plotxj", "plotyj", "plotzj", "xcj", "ycj");
-                }
+            function centralizarJulia(e) {
+                centralizar(e, "plot-julia", "plotxj", "plotyj", "plotzj", "xcj", "ycj");
+            }
 
-                function centralizar(e, nomeCanvas, ptx, pty, ptz, xcm, ycm) {
-                    let canvas = document.getElementById(nomeCanvas);
-                    let rect = canvas.getBoundingClientRect();
-                    let cursorX = e.clientX - rect.left;
-                    let cursorY = e.clientY - rect.top;
+            function centralizar(e, nomeCanvas, ptx, pty, ptz, xcm, ycm) {
+                let canvas = document.getElementById(nomeCanvas);
+                let rect = canvas.getBoundingClientRect();
+                let cursorX = e.clientX - rect.left;
+                let cursorY = e.clientY - rect.top;
 
-                    let xc = BigNumber(document.getElementById(ptx).value);
-                    let yc = BigNumber(document.getElementById(pty).value);
-                    let zoom = BigNumber(document.getElementById(ptz).value);
+                let xc = parseFloat(document.getElementById(ptx).value);
+                let yc = parseFloat(document.getElementById(pty).value);
+                let zoom = parseFloat(document.getElementById(ptz).value);
 
-                    let n = centralizarArea(xc, yc, cursorX, cursorY, zoom, canvas);
-                    document.getElementById(xcm).value = n["nx"].toString();
-                    document.getElementById(ycm).value = n["ny"].toString();
-                }
-
-                desenharIn(desenharMandelbrot, desenharJulia);
+                let n = centralizarArea(xc, yc, cursorX, cursorY, zoom, canvas);
+                document.getElementById(xcm).value = n["nx"].toString();
+                document.getElementById(ycm).value = n["ny"].toString();
             }
         </script>
     </head>
