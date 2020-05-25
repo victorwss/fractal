@@ -9,8 +9,8 @@
             }
 
             #codigo {
-                min-width: 600px;
-                min-height: 200px;
+                min-width: 900px;
+                min-height: 250px;
             }
 
             canvas {
@@ -39,14 +39,21 @@
             }
         </style>
         <script type="text/javascript">
+            function myParseInt(x) {
+                return !/^[\+\-]?[0-9]+$/gi.test(x) ? NaN : parseInt(x);
+            }
+
+            function myParseFloat(x) {
+                return !/^[\+\-]?[0-9]+(?:\.[0-9]+)?$/gi.test(x) ? NaN : parseFloat(x);
+            }
+
             function limparArea(canvas) {
                 const ctx = canvas.getContext('2d');
                 ctx.fillStyle = "#FFFFFF";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
 
-            function mandelbrot(x, y) {
-                const maxiter = 1024;
+            function mandelbrot(x, y, maxiter) {
                 let it = -1;
                 let zr = 0, zi = 0;
                 while (it < maxiter) {
@@ -60,8 +67,7 @@
                 return {"it": it, "r": zr, "i": zi};
             }
 
-            function julia(cx, cy, rr, x, y) {
-                const maxiter = 1024;
+            function julia(cx, cy, rr, x, y, maxiter) {
                 let zr = x, zi = y, it = 0;
                 while (it < maxiter) {
                     let zrzr = zr * zr, zizi = zi * zi;
@@ -91,7 +97,7 @@
                 }
             }
 
-            function desenharAreaMandelbrot(xc, yc, zoom, canvas, blocagem, callback, colorir) {
+            function desenharAreaMandelbrot(xc, yc, zoom, canvas, blocagem, callback, colorir, maxiter) {
                 const w = canvas.width;
                 const h = canvas.height;
                 const ctx = canvas.getContext('2d');
@@ -114,8 +120,8 @@
                         setTimeout(function() {
                             for (let py = (w / blocagem) * by; py < (w / blocagem) * (by + 1); py++) {
                                 for (let px = (w / blocagem) * bx; px < (w / blocagem) * (bx + 1); px++) {
-                                    let out = mandelbrot(minX + hpixel * px, minY + vpixel * py);
-                                    let cores = colorir(out["it"], out["zr"], out["zi"]);
+                                    let out = mandelbrot(minX + hpixel * px, minY + vpixel * py, maxiter);
+                                    let cores = colorir(out["it"], out["r"], out["i"], maxiter);
                                     ctx.fillStyle = "rgba(" + cores[0] + "," + cores[1] + "," + cores[2] + ",255)";
                                     ctx.fillRect(px, py, 1, 1);
                                 }
@@ -126,7 +132,7 @@
                 }
             }
 
-            function desenharAreaJulia(jx, jy, xc, yc, zoom, canvas, blocagem, callback, colorir) {
+            function desenharAreaJulia(jx, jy, xc, yc, zoom, canvas, blocagem, callback, colorir, maxiter) {
                 const w = canvas.width;
                 const h = canvas.height;
                 const ctx = canvas.getContext('2d');
@@ -154,8 +160,8 @@
                         setTimeout(function() {
                             for (let py = (w / blocagem) * by; py < (w / blocagem) * (by + 1); py++) {
                                 for (let px = (w / blocagem) * bx; px < (w / blocagem) * (bx + 1); px++) {
-                                    let out = julia(jx, jy, rr, minX + hpixel * px, minY + vpixel * py);
-                                    let cores = colorir(out["it"], out["zr"], out["zi"]);
+                                    let out = julia(jx, jy, rr, minX + hpixel * px, minY + vpixel * py, maxiter);
+                                    let cores = colorir(out["it"], out["r"], out["i"], maxiter);
                                     ctx.fillStyle = "rgba(" + cores[0] + "," + cores[1] + "," + cores[2] + ",255)";
                                     ctx.fillRect(px, py, 1, 1);
                                 }
@@ -166,38 +172,46 @@
                 }
             }
 
-            function avaliar() {
-                const fx = document.getElementById('codigo').value;
+            function avaliar(areaCodigo) {
+                const fx = areaCodigo.value;
                 const ffx = "(" + fx + ")";
                 try {
                     return eval(ffx);
                 } catch (z) {
-                    throw new Error("Erro na função JavaScript: " + z);
+                    throw new Error("Erro na função colorir do JavaScript: " + z);
                 }
             }
 
             function desenhar(desenharMandelbrot, desenharJulia) {
                 let mandelbrot = document.getElementById('plot-mandelbrot');
                 let julia = document.getElementById('plot-julia');
+                let areaCodigo = document.getElementById('codigo');
+
                 let erroJs = document.getElementById("erro-js");
                 let erroEscalaMandelbrot = document.getElementById("erro-escala-mandelbrot");
                 let erroEscalaJulia = document.getElementById("erro-escala-julia");
                 let aguarde = document.getElementById("aguarde");
                 let botoes = document.getElementById("botoes");
+
                 let xcem = document.getElementById("xcm");
                 let ycem = document.getElementById("ycm")
                 let zoomem = document.getElementById("zoomm");
+                let maxiterem = document.getElementById("maxiterm");
+                let blocoem = document.getElementById("blocom");
                 let xcej = document.getElementById("xcj");
                 let ycej = document.getElementById("ycj")
                 let zoomej = document.getElementById("zoomj");
+                let maxiterej = document.getElementById("maxiterj");
+                let blocoej = document.getElementById("blocoj");
+
                 erroJs.style.display = "none";
                 erroEscalaMandelbrot.style.display = "none";
                 erroEscalaJulia.style.display = "none";
-                let xcm, ycm, zoomm, xcj, ycj, zoomj, colorir;
+                let xcm, ycm, zoomm, maxiterm, blocom, xcj, ycj, zoomj, maxiterj, blocoj, colorir;
 
                 try {
-                    colorir = avaliar();
-                    let teste = [colorir(0, 0, 0), colorir(5, -1, 0.5), colorir(8, -0.5, 1), colorir(1024, 2, -2)];
+                    colorir = avaliar(areaCodigo);
+                    let teste = [colorir(0, 0, 0, 1024), colorir(5, -1, 0.5, 1024), colorir(8, -0.5, 1, 1024), colorir(1024, 2, -2, 1024)];
                     for (let e in teste) {
                         let ttt = teste[e];
                         if (!(ttt instanceof Array)) throw new Error("A função de colorir falhou num teste rápido, não está retornando arrays em todos os casos.");
@@ -217,13 +231,19 @@
                 }
 
                 try {
-                    xcm = parseFloat(xcem.value);
-                    ycm = parseFloat(ycem.value);
-                    zoomm = parseFloat(zoomem.value);
-                    if (isNaN(xcm)) throw new Error("O valor do X central  não é um número válido.");
-                    if (isNaN(ycm)) throw new Error("O valor do Y central  não é um número válido.");
+                    xcm = myParseFloat(xcem.value);
+                    ycm = myParseFloat(ycem.value);
+                    zoomm = myParseFloat(zoomem.value);
+                    maxiterm = myParseInt(maxiterem.value);
+                    blocom = myParseInt(blocoem.value);
+                    if (isNaN(xcm)) throw new Error("O valor do X central não é um número válido.");
+                    if (isNaN(ycm)) throw new Error("O valor do Y central não é um número válido.");
                     if (isNaN(zoomm)) throw new Error("O valor do zoom  não é um número válido.");
-                    if (zoomm <= 0) throw new Error("O valor do zoom  deve ser maior que zero.");
+                    if (isNaN(maxiterm)) throw new Error("O valor do número de iterações não é um inteiro válido.");
+                    if (isNaN(blocom)) throw new Error("O valor do número de blocos não é um inteiro válido.");
+                    if (zoomm <= 0) throw new Error("O valor do zoom deve ser maior que zero.");
+                    if (maxiterm <= 0) throw new Error("O valor do número de iterações deve ser maior que zero.");
+                    if (blocom <= 0) throw new Error("O valor do número de blocos deve ser maior que zero.");
                 } catch (x) {
                     erroEscalaMandelbrot.style.display = "";
                     document.getElementById("erro-escala-mandelbrot-in").innerHTML = x.message;
@@ -232,13 +252,19 @@
                 }
 
                 try {
-                    xcj = parseFloat(xcej.value);
-                    ycj = parseFloat(ycej.value);
-                    zoomj = parseFloat(zoomej.value);
+                    xcj = myParseFloat(xcej.value);
+                    ycj = myParseFloat(ycej.value);
+                    zoomj = myParseFloat(zoomej.value);
+                    maxiterj = myParseInt(maxiterej.value);
+                    blocoj = myParseInt(blocoej.value);
                     if (isNaN(xcj)) throw new Error("O valor do X central não é um número válido.");
                     if (isNaN(ycj)) throw new Error("O valor do Y central não é um número válido.");
                     if (isNaN(zoomj)) throw new Error("O valor do zoom não é um número válido.");
+                    if (isNaN(maxiterj)) throw new Error("O valor do número de iterações não é um inteiro válido.");
+                    if (isNaN(blocoj)) throw new Error("O valor do número de blocos não é um inteiro válido.");
                     if (zoomj <= 0) throw new Error("O valor do zoom deve ser maior que zero.");
+                    if (maxiterj <= 0) throw new Error("O valor do número de iterações deve ser maior que zero.");
+                    if (blocoj <= 0) throw new Error("O valor do número de blocos deve ser maior que zero.");
                 } catch (x) {
                     erroEscalaJulia.style.display = "";
                     document.getElementById("erro-escala-julia-in").innerHTML = x.message;
@@ -246,12 +272,17 @@
                     return;
                 }
 
+                areaCodigo.readOnly = true;
                 xcem.readOnly = true;
                 ycem.readOnly = true;
                 zoomem.readOnly = true;
+                maxiterem.readOnly = true;
+                blocoem.readOnly = true;
                 xcej.readOnly = true;
                 ycej.readOnly = true;
                 zoomej.readOnly = true;
+                maxiterej.readOnly = true;
+                blocoej.readOnly = true;
                 botoes.style.display = "none";
                 aguarde.style.display = "";
                 if (desenharMandelbrot) {
@@ -266,26 +297,30 @@
                 }
 
                 function pronto() {
+                    areaCodigo.readOnly = false;
                     xcem.readOnly = false;
                     ycem.readOnly = false;
                     zoomem.readOnly = false;
+                    maxiterem.readOnly = false;
+                    blocoem.readOnly = false;
                     xcej.readOnly = false;
                     ycej.readOnly = false;
                     zoomej.readOnly = false;
+                    maxiterej.readOnly = false;
+                    blocoej.readOnly = false;
                     botoes.style.display = "";
                     aguarde.style.display = "none";
                 }
+
                 let blocosOk = 0;
-                let blocagem = 16;
-                const totalBlocos = ((desenharMandelbrot ? 1 : 0) + (desenharJulia ? 1 : 0)) * blocagem * blocagem;
+                const totalBlocos = ((desenharMandelbrot ? blocom * blocom : 0) + (desenharJulia ? blocoj * blocoj : 0));
                 function recebe() {
                     blocosOk++;
                     if (blocosOk == totalBlocos) pronto();
                 }
                 setTimeout(function() {
-                    let blocosOk = 0;
-                    if (desenharMandelbrot) desenharAreaMandelbrot(xcm, ycm, zoomm, mandelbrot, blocagem, recebe, colorir);
-                    if (desenharJulia) desenharAreaJulia(xcm, ycm, xcj, ycj, zoomj, julia, blocagem, recebe, colorir);
+                    if (desenharMandelbrot) desenharAreaMandelbrot(xcm, ycm, zoomm, mandelbrot, blocom, recebe, colorir, maxiterm);
+                    if (desenharJulia) desenharAreaJulia(xcm, ycm, xcj, ycj, zoomj, julia, blocoj, recebe, colorir, maxiterj);
                 }, 10);
             }
 
@@ -317,30 +352,41 @@
         <h1>Plote os fractais de Maldelbrot e Julia</h1>
         <h2>1. Digite o código da função em JavaScript que define as cores</h2>
 
-        <textarea id="codigo">function colorir(iteracoes, ultimoReal, ultimoImaginario) {
+        <textarea id="codigo">function colorir(iteracoes, ultimoReal, ultimoImaginario, maxIteracoes) {
+    let r = Math.max(0, Math.min(255, Math.floor(128 * Math.sqrt(ultimoReal ** 2 + ultimoImaginario ** 2))));
+    let a = maxIteracoes / 4, b = maxIteracoes / 2, c = 3 * maxIteracoes / 4;
     return iteracoes === 0 ? [0, 0, 255]
             : iteracoes === 1 ? [0, 0, 208]
             : iteracoes === 2 ? [0, 0, 160]
             : iteracoes === 3 ? [0, 0, 128]
             : iteracoes === 4 ? [0, 0, 64]
             : iteracoes === 5 ? [0, 0, 0]
-            : iteracoes &lt; 256 ? [0, iteracoes, 0]
-            : iteracoes &lt; 512 ? [0, 255, iteracoes - 256]
-            : iteracoes &lt; 768 ? [iteracoes - 512, 768 - iteracoes, 255]
-            : iteracoes &lt; 1024 ? [255, iteracoes - 768, 255]
-            : [128, 128, 255];
+            : iteracoes &lt; a ? [0, iteracoes * 256 / a, 0]
+            : iteracoes &lt; b ? [0, 255, (iteracoes - a) * 256 / a]
+            : iteracoes &lt; c ? [(iteracoes - b) * 256 / a, (c - iteracoes) * 256 / a, 255]
+            : iteracoes &lt; maxIteracoes ? [255, (iteracoes - c) * 256 / a, 255]
+            : [r, 128, 255];
 }</textarea>
         <p id="erro-js" style="display: none"><button type="button" id="erro-js-in"></button></p>
+
         <h2>2. Ajuste as escalas do fractal de Mandelbrot</h2>
         <label for="xcm">X central: </label><input id="xcm" type="number" step="any" value="-0.5" />
         <label for="ycm">Y central: </label><input id="ycm" type="number" step="any" value="0" />
+        <br>
         <label for="zoomm">Zoom: </label><input id="zoomm" type="number" step="any" value="1" />
+        <label for="maxiterm">Max iterações: </label><input id="maxiterm" type="number" step="any" value="1024" />
+        <label for="blocom">Blocagem: </label><input id="blocom" type="number" step="any" value="8" />
         <p id="erro-escala-mandelbrot" style="display: none"><button type="button" id="erro-escala-mandelbrot-in"></button></p>
+
         <h2>3. Ajuste as escalas do fractal de Julia correspondente ao ponto central escolhido no de Mandelbrot</h2>
         <label for="xcj">X central: </label><input id="xcj" type="number" step="any" value="0" />
         <label for="ycj">Y central: </label><input id="ycj" type="number" step="any" value="0" />
+        <br>
         <label for="zoomj">Zoom: </label><input id="zoomj" type="number" step="any" value="0.66" />
+        <label for="maxiterj">Max iterações: </label><input id="maxiterj" type="number" step="any" value="1024" />
+        <label for="blocoj">Blocagem: </label><input id="blocoj" type="number" step="any" value="8" />
         <p id="erro-escala-julia" style="display: none"><button type="button" id="erro-escala-julia-in"></button></p>
+
         <h2>4. Clique em um dos botões abaixo</h2>
         <p>
             <span id="botoes">
