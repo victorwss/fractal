@@ -48,7 +48,7 @@
             }
 
             function limparArea(canvas) {
-                const ctx = canvas.getContext('2d');
+                const ctx = canvas.getContext("2d");
                 ctx.fillStyle = "#FFFFFF";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
@@ -83,13 +83,13 @@
             function centralizarArea(xc, yc, cursorX, cursorY, zoom, canvas) {
                 const w = canvas.width;
                 const h = canvas.height;
-                const ctx = canvas.getContext('2d');
+                const ctx = canvas.getContext("2d");
                 const mz = 1 / zoom;
                 const minX = xc - mz;
                 const maxX = xc + mz;
                 const minY = yc - mz;
                 const maxY = yc + mz;
-                const hpixel = (maxX- minX) / w;
+                const hpixel = (maxX - minX) / w;
                 const vpixel = (maxY - minY) / h;
                 return {
                     "nx": minX + (hpixel * cursorX),
@@ -100,7 +100,7 @@
             function desenharAreaMandelbrot(xc, yc, zoom, canvas, blocagem, callback, colorir, maxiter) {
                 const w = canvas.width;
                 const h = canvas.height;
-                const ctx = canvas.getContext('2d');
+                const ctx = canvas.getContext("2d");
                 const mz = 1 / zoom;
                 const minX = xc - mz;
                 const maxX = xc + mz;
@@ -285,6 +285,7 @@
                 blocoej.readOnly = true;
                 botoes.style.display = "none";
                 aguarde.style.display = "";
+
                 if (desenharMandelbrot) {
                     document.getElementById("plotxm").value = xcm.toString();
                     document.getElementById("plotym").value = ycm.toString();
@@ -370,35 +371,46 @@
         <p id="erro-js" style="display: none"><button type="button" id="erro-js-in"></button></p>
 
         <h2>2. Ajuste as escalas do fractal de Mandelbrot</h2>
-        <label for="xcm">X central: </label><input id="xcm" type="number" step="any" value="-0.5" />
-        <label for="ycm">Y central: </label><input id="ycm" type="number" step="any" value="0" />
-        <br>
-        <label for="zoomm">Zoom: </label><input id="zoomm" type="number" step="any" value="1" />
-        <label for="maxiterm">Max iterações: </label><input id="maxiterm" type="number" step="any" value="1024" />
-        <label for="blocom">Blocagem: </label><input id="blocom" type="number" step="any" value="8" />
-        <p id="erro-escala-mandelbrot" style="display: none"><button type="button" id="erro-escala-mandelbrot-in"></button></p>
+        <div>
+            <label for="xcm">X central: </label><input id="xcm" type="number" step="any" value="-0.5" />
+            <label for="ycm">Y central: </label><input id="ycm" type="number" step="any" value="0" />
+        </div>
+        <div>
+            <label for="zoomm">Zoom: </label><input id="zoomm" type="number" step="any" value="1" />
+            <label for="maxiterm">Max iterações: </label><input id="maxiterm" type="number" step="any" value="1024" />
+            <label for="blocom">Blocagem: </label><input id="blocom" type="number" step="any" value="8" />
+        </div>
+        <p id="erro-escala-mandelbrot" style="display: none">
+            <button type="button" id="erro-escala-mandelbrot-in"></button>
+        </p>
 
         <h2>3. Ajuste as escalas do fractal de Julia correspondente ao ponto central escolhido no de Mandelbrot</h2>
-        <label for="xcj">X central: </label><input id="xcj" type="number" step="any" value="0" />
-        <label for="ycj">Y central: </label><input id="ycj" type="number" step="any" value="0" />
-        <br>
-        <label for="zoomj">Zoom: </label><input id="zoomj" type="number" step="any" value="0.66" />
-        <label for="maxiterj">Max iterações: </label><input id="maxiterj" type="number" step="any" value="1024" />
-        <label for="blocoj">Blocagem: </label><input id="blocoj" type="number" step="any" value="8" />
+        <div>
+            <label for="xcj">X central: </label><input id="xcj" type="number" step="any" value="0" />
+            <label for="ycj">Y central: </label><input id="ycj" type="number" step="any" value="0" />
+        </div>
+        <div>
+            <label for="zoomj">Zoom: </label><input id="zoomj" type="number" step="any" value="0.66" />
+            <label for="maxiterj">Max iterações: </label><input id="maxiterj" type="number" step="any" value="1024" />
+            <label for="blocoj">Blocagem: </label><input id="blocoj" type="number" step="any" value="8" />
+        </div>
         <p id="erro-escala-julia" style="display: none"><button type="button" id="erro-escala-julia-in"></button></p>
 
         <h2>4. Clique em um dos botões abaixo</h2>
         <p>
             <span id="botoes">
-                <button id="plotar-mandelbrot" type="button" onclick="javascript:desenhar(true, false);">Plotar o fractal de Mandelbrot</button>
-                <button id="plotar-julia" type="button" onclick="javascript:desenhar(false, true);">Plotar o fractal de Julia</button>
-                <button id="plotar-ambos" type="button" onclick="javascript:desenhar(true, true);">Plotar ambos os fractais</button>
+                <button id="plotar-mandelbrot" type="button" onclick="desenhar(true, false);">Plotar o fractal de Mandelbrot</button>
+                <button id="plotar-julia" type="button" onclick="desenhar(false, true);">Plotar o fractal de Julia</button>
+                <button id="plotar-ambos" type="button" onclick="desenhar(true, true);">Plotar ambos os fractais</button>
             </span>
             <button type="button" id="aguarde" style="display: none">Aguarde...</button>
         </p>
+
         <h2>5. Veja os resultados das plotagens</h2>
-        <canvas id="plot-mandelbrot" width="513" height="513" onclick="javascript:centralizarMandelbrot(event);"></canvas>
-        <canvas id="plot-julia" width="513" height="513" onclick="javascript:centralizarJulia(event);"></canvas>
+        <div>
+            <canvas id="plot-mandelbrot" width="513" height="513" onclick="centralizarMandelbrot(event);"></canvas>
+            <canvas id="plot-julia" width="513" height="513" onclick="centralizarJulia(event);"></canvas>
+        </div>
         <input type="hidden" id="plotxm" value="-0.5" />
         <input type="hidden" id="plotym" value="0" />
         <input type="hidden" id="plotzm" value="2" />
